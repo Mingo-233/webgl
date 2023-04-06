@@ -3,12 +3,25 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>从一个点开始</title>
+    <title>绘制线段</title>
     <link rel="stylesheet" href="../css/common.css" />
+    <style type="text/css">
+        .option {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            color: #FFF;
+        }
+    </style>
 </head>
 
 <body>
     <canvas id="canvas"></canvas>
+    <div class="option">
+        <input type="radio" name="line_type" checked="true" id="LINES" value="LINES" /><label for="LINES">基本线段</label>
+        <input type="radio" name="line_type" id="LINE_STRIP" value="LINE_STRIP" /><label for="LINE_STRIP">带状线段</label>
+        <input type="radio" name="line_type" id="LINE_LOOP" value="LINE_LOOP" /><label for="LINE_LOOP">闭合线段</label>
+    </div>
     <script type="shader-source" id="vertexShader">
         //设置浮点数精度为中等精度
         precision mediump float;
@@ -21,15 +34,10 @@
             vec2 position = (a_Position / a_Screen_Size) * 2.0 - 1.0; 
             position = position * vec2(1.0, -1.0);
             gl_Position = vec4(position, 0, 1);
-            //end 将屏幕坐标系转化为裁剪坐标（裁剪坐标系）
-            //声明要绘制的点的大小。
-            gl_PointSize = 30.0;    
+
+            gl_PointSize = 10.0;    
         }
 	</script>
-    <!-- vec2 position = (a_Position / a_Screen_Size) * 2.0 - 1.0; 
-        这句代码用来将浏览器窗口坐标转换成裁剪坐标，之后通过透视除法，
-        除以 w 值（此处为 1 ）转变成设备坐标（NDC坐标系）。
-        这个算法首先将(x,y) 转化到【0, 1】区间，再将 【0, 1】之间的值乘以 2 转化到 【0, 2】区间，之后再减去 1 ，转化到 【-1, 1】之间的值，即 NDC 坐标 -->
     <script type="shader-source" id="fragmentShader">
         //设置浮点数精度为中等精度
         precision mediump float;
@@ -46,6 +54,7 @@
 
     <script src="../utils/webgl-helper.js"></script>
     <script>
+        let currentType = 'LINES';
 
         var canvas = document.querySelector('#canvas');
         resizeCanvas(canvas);
@@ -82,36 +91,56 @@
 
         //找到顶点着色器中的变量a_Position
         var a_Position = gl.getAttribLocation(program, 'a_Position');
+        gl.enableVertexAttribArray(a_Position);
+        let buffer = gl.createBuffer()
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+        gl.vertexAttribPointer(a_Position, 2, gl.FLOAT, false, 0, 0)
+
         //找到顶点着色器中的变量a_Screen_Size
         var a_Screen_Size = gl.getAttribLocation(program, 'a_Screen_Size');
         //找到片元着色器中的变量u_Color
         var u_Color = gl.getUniformLocation(program, 'u_Color');
         //为顶点着色器中的 a_Screen_Size 传递 canvas 的宽高信息
         gl.vertexAttrib2f(a_Screen_Size, canvas.width, canvas.height);
+
         //存储点击位置的数组。
         var points = [];
         canvas.addEventListener('click', e => {
             var x = e.pageX;
             var y = e.pageY;
-            var color = randomColor();
-            points.push({ x: x, y: y, color: color })
+            points.push(e.pageX, e.pageY);
+
             gl.clearColor(0, 0, 0, 1.0);
             //用上一步设置的清空画布颜色清空画布。
-            gl.clear(gl.COLOR_BUFFER_BIT);
             for (let i = 0; i < points.length; i++) {
-                var color = points[i].color;
                 //为片元着色器中的 u_Color 传递随机颜色
-                gl.uniform4f(u_Color, color.r, color.g, color.b, color.a);
-                //为顶点着色器中的 a_Position 传递顶点坐标。
-                gl.vertexAttrib2f(a_Position, points[i].x, points[i].y);
-                //绘制点
-                gl.drawArrays(gl.POINTS, 0, 1);
+                gl.uniform4f(u_Color, 200.00, 200.00, 97.36, 1);
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(points), gl.STATIC_DRAW)
+
+                render(gl);
+
             }
         })
         // 设置清屏颜色
         gl.clearColor(0, 0, 0, 1.0);
-        // 用上一步设置的清空画布颜色清空画布。
-        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        $$('[name="line_type"]').forEach(function (item) {
+            item.addEventListener('input', function () {
+                points = [];
+                currentType = this.value;
+                render(gl);
+            })
+        })
+
+        /*渲染*/
+        function render(gl) {
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            if (points.length > 0) {
+                gl.drawArrays(gl[currentType], 0, points.length / 2);
+            }
+        }
+        render(gl);
     </script>
 </body>
 
