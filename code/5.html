@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>多个 buffer 绘制渐变三角形</title>
+    <title>单个 buffer 绘制渐变三角形</title>
     <link rel="stylesheet" href="../css/common.css" />
 </head>
 
@@ -96,8 +96,6 @@
 
         //顶点坐标数组
         let positions = [];
-        //顶点颜色数组
-        let colors = [];
 
         //找到顶点着色器中的变量a_Position
         var a_Position = gl.getAttribLocation(program, 'a_Position');
@@ -107,13 +105,16 @@
         let a_Color = gl.getAttribLocation(program, 'a_Color');
 
         //创建坐标缓冲区
-        let positionBuffer = createBuffer(gl, a_Position, {
-            size: 2
-        });
-        //创建颜色缓冲区
-        let colorBuffer = createBuffer(gl, a_Color, {
-            size: 4
-        });
+        gl.enableVertexAttribArray(a_Position);
+        gl.enableVertexAttribArray(a_Color);
+        let sumBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, sumBuffer);
+        // a_Position：坐标信息占用 2 个元素，故 size 设置为 2。 坐标信息是从第一个元素开始读取，偏移值为 0 ，所以 offset 设置为 0.
+        // a_Color：由于 color 信息占用 4 个元素，所以 size 设置为 4 。 color 信息是在坐标信息之后，偏移两个元素所占的字节（2 * 4 = 8）。所以，offset 设置为 8。
+        // stride：代表一个顶点信息所占用的字节数，我们的示例，一个顶点占用 6 个元素，每个元素占用 4 字节，所以，stride = 4 * 6 = 24 个字节。
+
+        gl.vertexAttribPointer(a_Position, 2, gl.FLOAT, false, 24, 0);
+        gl.vertexAttribPointer(a_Color, 4, gl.FLOAT, false, 24, 8);
 
         //为顶点着色器中的 a_Screen_Size 传递 canvas 的宽高信息
         gl.vertexAttrib2f(a_Screen_Size, canvas.width, canvas.height);
@@ -122,19 +123,13 @@
         canvas.addEventListener("click", e => {
             positions.push(e.pageX, e.pageY);
             let color = randomColor();
-            colors.push(color.r, color.g, color.b, color.a);
-            // 顶点信息为6个数据即3个顶点时执行绘制操作，因为三角形由三个顶点组成。
-            if (positions.length % 6 == 0) {
-                gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            positions.push(color.r, color.g, color.b, color.a);
+            // 6 * 3个顶点 =18
+            if (positions.length % 18 == 0) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, sumBuffer);
                 //复制坐标信息到缓冲区中
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
-                // 请谨记：程序中如果有多个 buffer 的时候，在切换 buffer 进行操作时，
-                //一定要通过调用 gl.bindBuffer 将要操作的 buffer 绑定到 gl.ARRAY_BUFFER 上，这样才能正确地操作 buffer 。
-                //可以将 bindBuffer 理解为一个状态机，bindBuffer 之后的对 buffer 的一些操作，
-                //都是基于最近一次绑定的 buffer 来进行的。
-                gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-                //复制颜色信息到缓冲区中。
-                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+
                 //重绘
                 render(gl);
             }
@@ -148,7 +143,7 @@
             let primitiveType = gl.TRIANGLES;
             if (positions.length > 0) {
                 console.log(positions);
-                gl.drawArrays(primitiveType, 0, positions.length / 2);
+                gl.drawArrays(primitiveType, 0, positions.length / 6);
             }
         }
         render(gl);

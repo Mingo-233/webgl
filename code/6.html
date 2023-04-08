@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>多个 buffer 绘制渐变三角形</title>
+    <title>单个 buffer 绘制渐变三角形</title>
     <link rel="stylesheet" href="../css/common.css" />
 </head>
 
@@ -94,11 +94,27 @@
         // 使用刚创建好的着色器程序。
         gl.useProgram(program);
 
-        //顶点坐标数组
-        let positions = [];
-        //顶点颜色数组
-        let colors = [];
-
+        // //顶点坐标数组
+        // let positions = [
+        //     30, 30, 255, 0, 0, 1,    //V0
+        //     30, 300, 255, 0, 0, 1,   //V1
+        //     300, 300, 255, 0, 0, 1,  //V2
+        //     30, 30, 0, 255, 0, 1,    //V0
+        //     300, 300, 0, 255, 0, 1,  //V2
+        //     300, 30, 0, 255, 0, 1    //V3
+        // ];
+        //存储顶点信息的数组
+        var positions = [
+            30, 30, 255, 0, 0, 1,    //V0
+            30, 300, 255, 0, 0, 1,   //V1
+            300, 300, 255, 0, 0, 1,  //V2
+            300, 30, 0, 255, 0, 1    //V3
+        ];
+        //存储顶点索引的数组
+        var indices = [
+            0, 1, 2, //第一个三角形
+            0, 2, 3  //第二个三角形
+        ];
         //找到顶点着色器中的变量a_Position
         var a_Position = gl.getAttribLocation(program, 'a_Position');
         //找到顶点着色器中的变量a_Screen_Size
@@ -107,38 +123,21 @@
         let a_Color = gl.getAttribLocation(program, 'a_Color');
 
         //创建坐标缓冲区
-        let positionBuffer = createBuffer(gl, a_Position, {
-            size: 2
-        });
-        //创建颜色缓冲区
-        let colorBuffer = createBuffer(gl, a_Color, {
-            size: 4
-        });
+        gl.enableVertexAttribArray(a_Position);
+        gl.enableVertexAttribArray(a_Color);
+        let sumBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, sumBuffer);
+        gl.vertexAttribPointer(a_Position, 2, gl.FLOAT, false, 24, 0);
+        gl.vertexAttribPointer(a_Color, 4, gl.FLOAT, false, 24, 8);
 
         //为顶点着色器中的 a_Screen_Size 传递 canvas 的宽高信息
         gl.vertexAttrib2f(a_Screen_Size, canvas.width, canvas.height);
 
+        //  创建索引缓冲区
+        var indicesBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indicesBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
 
-        canvas.addEventListener("click", e => {
-            positions.push(e.pageX, e.pageY);
-            let color = randomColor();
-            colors.push(color.r, color.g, color.b, color.a);
-            // 顶点信息为6个数据即3个顶点时执行绘制操作，因为三角形由三个顶点组成。
-            if (positions.length % 6 == 0) {
-                gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-                //复制坐标信息到缓冲区中
-                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
-                // 请谨记：程序中如果有多个 buffer 的时候，在切换 buffer 进行操作时，
-                //一定要通过调用 gl.bindBuffer 将要操作的 buffer 绑定到 gl.ARRAY_BUFFER 上，这样才能正确地操作 buffer 。
-                //可以将 bindBuffer 理解为一个状态机，bindBuffer 之后的对 buffer 的一些操作，
-                //都是基于最近一次绑定的 buffer 来进行的。
-                gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-                //复制颜色信息到缓冲区中。
-                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-                //重绘
-                render(gl);
-            }
-        })
         // 设置清屏颜色
         gl.clearColor(0, 0, 0, 1.0);
 
@@ -148,10 +147,20 @@
             let primitiveType = gl.TRIANGLES;
             if (positions.length > 0) {
                 console.log(positions);
-                gl.drawArrays(primitiveType, 0, positions.length / 2);
+                gl.drawArrays(primitiveType, 0, positions.length / 6);
             }
         }
-        render(gl);
+        gl.bindBuffer(gl.ARRAY_BUFFER, sumBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+
+        // 开启背面剔除功能：
+        gl.enable(gl.CULL_FACE);
+        // 只显示背面
+        // gl.cullFace(gl.FRONT);
+        // render(gl);
+        gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+
+
     </script>
 </body>
 
