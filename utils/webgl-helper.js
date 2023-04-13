@@ -178,12 +178,20 @@ function loadTexture(gl, src, attribute, callback) {
   let img = new Image();
   img.crossOrigin = 'anonymous';
   img.onload = function () {
+    // 激活 0 号纹理通道gl.TEXTURE0，0 号纹理通道是默认值，本例也可以不设置。
     gl.activeTexture(gl.TEXTURE0);
+    // 创建一个纹理对象：
     let texture = gl.createTexture();
+    // 将创建好的纹理对象texture绑定 到当前纹理绑定点上，即 gl.TEXTURE_2D。绑定完之后对当前纹理对象的所有操作，都将基于 texture 对象，直到重新绑定。
     gl.bindTexture(gl.TEXTURE_2D, texture);
+    // 片元着色器传递图片数据：
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+    // 我们将 img 变量指向的图片数据传递给片元着色器，取对应纹理坐标的 RGBA 四个通道值，赋给片元，每个通道的数据格式是无符号单字节整数。
+    // 设置图片在放大或者缩小时采用的算法gl.LINEAR。
     gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    // 在 GLSL 中，如果将一个整数值 0 赋给一个采样器变量，那么该采样器变量将指向纹理单元索引为 0 的纹理对象。纹理单元是一个用于存储纹理对象的硬件缓存区域，可以在着色器中通过纹理单元索引来选择需要采样的纹理对象。
+    // 在 OpenGL 中，默认情况下，纹理单元 0 被预设为当前正在使用的纹理单元。因此，如果将一个整数值 0 赋给采样器变量，那么它将指向当前正在使用的纹理对象。
     gl.uniform1i(attribute, 0);
     callback && callback();
   };
